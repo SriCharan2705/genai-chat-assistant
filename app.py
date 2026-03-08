@@ -9,7 +9,11 @@ from mistralai import Mistral
 # Configuration
 # ----------------------------------
 
-MISTRAL_API_KEY = "YQlrHEg16OymroJ8ljMEWWrMqJIT56vk"
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+
+if not MISTRAL_API_KEY:
+    raise ValueError("MISTRAL_API_KEY not found in environment variables")
+
 EMBED_MODEL = "mistral-embed"
 CHAT_MODEL = "mistral-small"
 
