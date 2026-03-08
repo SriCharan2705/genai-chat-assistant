@@ -9,7 +9,7 @@ from mistralai import Mistral
 # Configuration
 # ----------------------------------
 
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY") #add environmental varaible with API KEY before running the code
 
 if not MISTRAL_API_KEY:
     raise ValueError("MISTRAL_API_KEY not found in environment variables")
