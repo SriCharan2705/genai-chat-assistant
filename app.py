@@ -75,7 +75,7 @@ else:
 sessions = {}
 
 # ----------------------------------
-# Similarity search (consine simalarity is used insted of vector DB )
+# Similarity search (consine simalarity is used instead of vector DB )
 # ----------------------------------
 
 def retrieve_chunks(query, top_k=3):
