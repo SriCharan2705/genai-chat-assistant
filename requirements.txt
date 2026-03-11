@@ -1,5 +1,4 @@
 flask
-numpy
-scikit-learn
 mistralai
 gunicorn
+chromadb

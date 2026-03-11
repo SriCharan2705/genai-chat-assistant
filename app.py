@@ -1,8 +1,7 @@
 import json
 import os
-import numpy as np
 from flask import Flask, request, jsonify, render_template
-from sklearn.metrics.pairwise import cosine_similarity
+import chromadb
 from mistralai import Mistral
 
 # ----------------------------------
@@ -31,22 +30,24 @@ with open("docs.json", "r", encoding="utf-8") as f:
 doc_texts = [doc["content"] for doc in documents]
 
 # ----------------------------------
-# Generate embeddings for documents
+# Generate embeddings & Init Vector DB
 # ----------------------------------
 
-print("Generating embeddings for documents...")
+print("Initializing Vector DB...")
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma_client.get_or_create_collection(
+    name="document_collection",
+    metadata={"hnsw:space": "cosine"}
+)
 
-if os.path.exists("doc_embeddings.npy"):
+if collection.count() > 0:
 
-    print("Loading cached embeddings...")
-
-    doc_embeddings = np.load("doc_embeddings.npy")
+    print("Loading cached embeddings from Vector DB...")
 
 else:
 
     print("Generating embeddings...")
 
-    doc_embeddings = []
     batch_size = 50
 
     for i in range(0, len(doc_texts), batch_size):
@@ -58,14 +59,19 @@ else:
             inputs=batch
         )
 
+        batch_embeddings = []
         for item in response.data:
-            doc_embeddings.append(item.embedding)
+            batch_embeddings.append(item.embedding)
+            
+        batch_ids = [str(idx) for idx in range(i, i+len(batch))]
 
-    doc_embeddings = np.array(doc_embeddings)
+        collection.add(
+            embeddings=batch_embeddings,
+            documents=batch,
+            ids=batch_ids
+        )
 
-    np.save("doc_embeddings.npy", doc_embeddings)
-
-    print("Embeddings saved.")
+    print("Embeddings saved to Vector DB.")
 
 
 # ----------------------------------
@@ -75,7 +81,7 @@ else:
 sessions = {}
 
 # ----------------------------------
-# Similarity search (consine similarity is used instead of vector DB )
+# Similarity search (using Vector DB)
 # ----------------------------------
 
 def retrieve_chunks(query, top_k=3):
@@ -85,19 +91,19 @@ def retrieve_chunks(query, top_k=3):
         inputs=[query]
     ).data[0].embedding
 
-    similarities = cosine_similarity(
-        [query_embed],
-        doc_embeddings
-    )[0]
+    results = collection.query(
+        query_embeddings=[query_embed],
+        n_results=top_k
+    )
 
-    top_indices = similarities.argsort()[-top_k:][::-1]
+    retrieved = results['documents'][0] if results['documents'] else []
 
-    retrieved = []
-
-    for idx in top_indices:
-        retrieved.append(doc_texts[idx])
-
-    max_similarity = similarities[top_indices[0]]
+    distances = results['distances']
+    # For cosine space in chromadb, distance = 1 - cosine_similarity
+    if distances and distances[0]:
+        max_similarity = 1 - distances[0][0]
+    else:
+        max_similarity = 0
 
     return retrieved, max_similarity
 
