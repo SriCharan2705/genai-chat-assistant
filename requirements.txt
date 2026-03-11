@@ -1,5 +1,5 @@
 flask
 numpy
 scikit-learn
-mistralai
 gunicorn
+mistralai>=1.0.0
